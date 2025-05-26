@@ -1,4 +1,4 @@
-import logging
+from utils.logger import log
 import re
 
 import gspread
@@ -61,9 +61,9 @@ async def handle_save_callback(callback: CallbackQuery, bot: Bot):
 
         # Здесь можно подключить сохранение в Google Sheet, БД и т.п.
         name = orig_msg.from_user.username or orig_msg.from_user.first_name
-        logging.info(f"Сохранено сообщение от @{name}")
-        logging.info(f"Категория: {category}")
-        logging.info(f"Текст: {orig_msg.text}")
+        log.info(f"Сохранено сообщение от @{name}")
+        log.info(f"Категория: {category}")
+        log.info(f"Текст: {orig_msg.text}")
 
         worksheet = connect_to_gsheet("credentials.json", "mamy2024")
         save_recommendation(
@@ -87,10 +87,10 @@ async def handle_save_callback(callback: CallbackQuery, bot: Bot):
                 text=f"✅ Добавили рекомендацию:\n\n💬 <i>{orig_msg.text}</i>\n📂 Категория: <b>{category}</b>"
             )
         except Exception as e:
-            logging.warning(f"Не удалось отправить сообщение в личку: {e}", exc_info=True)
+            log.warn(f"Не удалось отправить сообщение в личку: {e}", exc_info=True)
 
     except Exception as error:
-        logging.exception(f"Ошибка при обработке callback: {error}", exc_info=True)
+        log.exception(f"Ошибка при обработке callback: {error}", exc_info=True)
         await callback.answer("❌ Ошибка при сохранении", show_alert=True)
 
 

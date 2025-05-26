@@ -1,5 +1,5 @@
 import asyncio
-import logging
+from utils.logger import log
 import re
 
 from aiogram import Bot, Router, F
@@ -21,7 +21,7 @@ async def detect_recommendation(message: Message, bot: Bot):
 
     message_text = message.text.lower()
     if list(filter(lambda x: x.type == 'url', message.entities)) or bool(phone_pattern.search(message_text)):
-        logging.info(f"Обнаружена рекомендация: {message_text}")
+        log.info(f"Обнаружена рекомендация: {message_text}")
         uuid = generate_uuid(message.chat.id, message.message_id)
         in_memory.tmp_msg[uuid] = message
 

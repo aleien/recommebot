@@ -1,4 +1,4 @@
-import logging
+from utils.logger import log
 import re
 
 from aiogram import F
@@ -36,7 +36,7 @@ async def handle_link_submission(message: Message):
 
     uuid = in_memory.pending_links.pop(user_id)
     # Можно сохранить ссылку в tmp_msg[uuid] или сразу отправить в хранилище
-    logging.info(f"Добавлена ссылка для UUID {uuid}: {link}")
+    log.info(f"Добавлена ссылка для UUID {uuid}: {link}")
     # Удаляем блокировку
     in_memory.active_editors.pop(uuid, None)
     await message.reply("✅ Ссылка добавлена и рекомендация сохранена. Спасибо! 💛")
