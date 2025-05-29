@@ -9,7 +9,6 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config import config
 from handlers import add_link
 from handlers import detect
-from handlers import manual
 from handlers import save
 from handlers import start
 from utils.logger import log
@@ -26,7 +25,6 @@ router = Router()
 async def main():
     log.info("Бот запускается...")
     dp.include_router(start.router)
-    dp.include_router(manual.router)
     dp.include_router(detect.router)
     dp.include_router(add_link.router)
     dp.include_router(save.router)

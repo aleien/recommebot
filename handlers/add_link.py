@@ -1,3 +1,7 @@
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+
+from fsm.states import RecommendState
 from utils.logger import log
 import re
 
@@ -16,15 +20,15 @@ router = Router()
 
 
 @router.callback_query(F.data.startswith("addlink|"))
-async def handle_add_link(callback: CallbackQuery):
+async def handle_add_link(callback: CallbackQuery, state: FSMContext):
     _, uuid = callback.data.split("|")
     in_memory.pending_links[callback.from_user.id] = uuid
-
+    await state.set_state(RecommendState.typing_link)
     await callback.message.edit_text("✍️ Напишите сообщение с ссылкой или телефоном в ответ на это сообщение.")
 
 
-@router.message(F.text & F.chat.type != "private")
-async def handle_link_submission(message: Message):
+@router.message(StateFilter(RecommendState.typing_link), F.text & F.chat.type != "private")
+async def handle_link_submission(message: Message, state: FSMContext):
     user_id = message.from_user.id
     if user_id not in in_memory.pending_links:
         return
@@ -39,6 +43,7 @@ async def handle_link_submission(message: Message):
     log.info(f"Добавлена ссылка для UUID {uuid}: {link}")
     # Удаляем блокировку
     in_memory.active_editors.pop(uuid, None)
+    await state.clear()
     await message.reply("✅ Ссылка добавлена и рекомендация сохранена. Спасибо! 💛")
 
 

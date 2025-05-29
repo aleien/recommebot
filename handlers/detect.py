@@ -1,37 +1,27 @@
-import asyncio
-from utils.logger import log
 import re
 
 from aiogram import Bot, Router, F
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from keyboards.build_category_keyboard import build_category_keyboard
-from storage import in_memory
-from utils.tools import generate_uuid
+from fsm.states import ManualRecommend
+from logic_save import check_recommendation
+from logic_save import manual_recommendation
+from utils.tools import extract_link
 
 router = Router()
 
 phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
 
-@router.message(F.text)
+
+@router.message(Command("save"))
+@router.message(Command("✍️"))
+async def handle_save_manual(message: Message, bot: Bot, state: FSMContext):
+    await manual_recommendation(message, bot)
+    await state.set_state(ManualRecommend.selecting_category)
+
+
+@router.message(StateFilter(None), F.text)
 async def detect_recommendation(message: Message, bot: Bot):
-    if message.chat.type == "private":
-        # Пропускаем личные чаты
-        return
-
-    message_text = message.text.lower()
-    if list(filter(lambda x: x.type == 'url', message.entities)) or bool(phone_pattern.search(message_text)):
-        log.info(f"Обнаружена рекомендация: {message_text}")
-        uuid = generate_uuid(message.chat.id, message.message_id)
-        in_memory.tmp_msg[uuid] = message
-
-        # Кнопки выбора категории
-        keyboard = build_category_keyboard(uuid)
-
-        reply_msg = await message.reply(
-            "👀 Похоже, это рекомендация. Хотите сохранить? Выберите категорию:",
-            reply_markup=keyboard
-        )
-        await asyncio.sleep(60)  # ждём 60 секунд
-        await bot.delete_message(chat_id=reply_msg.chat.id, message_id=reply_msg.message_id)
-
+    await check_recommendation(message, bot)
