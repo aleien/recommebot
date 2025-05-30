@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 
 import gspread
@@ -98,7 +99,7 @@ async def save(bot: Bot, category, uuid, from_user_id, answer_func, edit_func):
         log.info(f"Категория: {category}")
         log.info(f"Текст: {orig_msg.text}")
 
-        worksheet = connect_to_gsheet("credentials.json", "mamy2024")
+        worksheet = connect_to_gsheet(os.path.join(os.path.dirname(__file__), "credentials.json"), "mamy2024")
         save_recommendation(
             sheet=worksheet,
             uuid=uuid,

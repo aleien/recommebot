@@ -1,11 +1,13 @@
 import logging
+import os
 from logging.handlers import TimedRotatingFileHandler
 
 log = logging.getLogger()
 log.setLevel(level=logging.INFO)
 
+LOG_FILE = os.path.join(os.path.dirname(__file__), "../logs/bot.log")
 handler = TimedRotatingFileHandler(
-    "logs/bot.log",
+    LOG_FILE,
     when="MIDNIGHT",     # ротация каждый день
     backupCount=7        # хранить 7 дней
 )

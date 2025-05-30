@@ -18,7 +18,7 @@ phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d
 @router.message(Command("save"))
 @router.message(Command("✍️"))
 async def handle_save_manual(message: Message, bot: Bot, state: FSMContext):
-    await manual_recommendation(message, bot)
+    await manual_recommendation(message.reply_to_message, bot)
     await state.set_state(ManualRecommend.selecting_category)
 
 
