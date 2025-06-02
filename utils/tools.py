@@ -1,6 +1,9 @@
 import hashlib
+import re
 
 from aiogram.types import Message
+
+phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
 
 
 def generate_uuid(chat_id: int, msg_id: int) -> str:
@@ -10,8 +13,23 @@ def generate_uuid(chat_id: int, msg_id: int) -> str:
 
 # TODO: multiple links
 def extract_link(message: Message) -> str:
-    link_match = list(filter(lambda x: x.type == 'url', message.entities))
-    if link_match:
-        return link_match[0].extract_from(message.text)
+    if message.entities is not None:
+        link_match = list(filter(lambda x: x.type == 'url', message.entities))
+        if link_match:
+            return link_match[0].extract_from(message.text)
+        else: return ""
+    else:
+        return ""
+
+
+def extract_phone(message: Message) -> str:
+    text = message.text.lower()
+    return extract_phone(text=text)
+
+
+def extract_phone(text: str) -> str:
+    match = phone_pattern.search(text)
+    if match is not None:
+        return str(phone_pattern.search(text).group(0))
     else:
         return ""

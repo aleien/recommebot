@@ -13,6 +13,7 @@ from aiogram.types import (
 )
 
 from storage import in_memory
+from utils.tools import extract_phone
 
 link_pattern = re.compile(r'https?://\S+')
 phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
@@ -34,7 +35,7 @@ async def handle_link_submission(message: Message, state: FSMContext):
         return
 
     link = message.text.strip()
-    if not (link_pattern.search(link) or phone_pattern.search(link)):
+    if not (link_pattern.search(link) or extract_phone(message)):
         await message.reply("⚠️ Это не похоже на ссылку или номер. Попробуйте ещё раз.")
         return
 
