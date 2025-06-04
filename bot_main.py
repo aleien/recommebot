@@ -23,7 +23,7 @@ router = Router()
 
 
 async def main():
-    log.info("Бот запускается...")
+    log.info("======== Бот запускается... ========")
     dp.include_router(start.router)
     dp.include_router(detect.router)
     dp.include_router(add_link.router)

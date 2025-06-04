@@ -39,12 +39,13 @@ DEVICES = 'Девайсы'
 MEDS = 'Лекарства/добавки'
 CLOTHES = 'Одежда'
 TOYS = 'Игрушки'
+FOOD = 'Продукты/питание'
 DOC = 'Врачи и клиники'
 
 CATEGORIES = [
     DOC, TOYS, CLOTHES, MEDS, DEVICES,
     FURNITURE, OTHER, ADVICE, NANNY, SERVICES,
-    STUDY, CARE, HOTEL, GIFTS, RECEPIES
+    STUDY, CARE, HOTEL, GIFTS, RECEPIES, FOOD
 ]
 
 category_keywords = {
@@ -70,6 +71,7 @@ category_keywords = {
             'резорт'],
     GIFTS: ['подарок', 'презент', 'сувенир', 'сюрприз', 'набор', 'игрушечный подарок', 'сертификат на подарок'],
     RECEPIES: ['рецепт'],
+    FOOD: ['банка', 'состав', 'перекус'],
 }
 
 link_pattern = re.compile(r'https?://\S+')
