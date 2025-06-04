@@ -20,20 +20,19 @@ async def handle_save_manual(message: Message, bot: Bot, state: FSMContext):
     await manual_recommendation(message.reply_to_message, bot, state)
 
 
-@router.callback_query(F.data.startswith("cancel"))
+@router.callback_query(F.data.startswith("cancel|"))
 async def handle_cancel(callback: CallbackQuery, bot: Bot, state: FSMContext):
     uuid = callback.data.split("|")[1]
 
     in_memory.tmp_msg.pop(uuid, None)
     in_memory.active_editors.pop(uuid, None)
-    msg_id = in_memory.confirmation_msgs.pop(uuid, None)
+    in_memory.confirmation_msgs.pop(uuid, None)
     await state.clear()
 
-    if msg_id:
-        try:
-            await callback.bot.delete_message(callback.message.chat.id, msg_id)
-        except TelegramBadRequest:
-            pass
+    try:
+        await callback.bot.delete_message(callback.message.chat.id, callback.message.message_id)
+    except TelegramBadRequest:
+        pass
 
     await callback.answer("❌ Отменено")
 

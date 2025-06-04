@@ -186,7 +186,7 @@ async def save(bot: Bot, category, uuid, from_user_id, answer_func, edit_func, s
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
                     [InlineKeyboardButton(text="➕ Добавить ссылку", callback_data=f"addlink|{uuid}")],
-                    [InlineKeyboardButton(text="❌ Отменить", callback_data=f"cancel|{uuid}")]
+                    [InlineKeyboardButton(text="❌ Отмена", callback_data=f"cancel|{uuid}")]
                 ]
             )
             await edit_func(
