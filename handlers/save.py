@@ -7,7 +7,7 @@ from aiogram.types import (
 
 from fsm.states import ManualRecommend
 from keyboards.build_category_keyboard import build_category_keyboard
-from logic_save import save, save_manual
+from logic_save import save
 from storage import in_memory
 from utils.logger import log
 
@@ -19,7 +19,7 @@ async def handle_manual_category(callback: CallbackQuery, bot: Bot, state: FSMCo
     _, category, uuid = callback.data.split("|")
     current_state = await state.get_state()
     log.info(f"Текущий стейт в хендлере (manual): {current_state}")
-    await save_manual(
+    await save(
         bot=bot,
         category=category,
         uuid=uuid,

@@ -1,17 +1,28 @@
 import os
 import re
 
+from enum import Enum
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr
 
 
-DOTENV = os.path.join(os.path.dirname(__file__), ".env")
+DOTENV = os.path.join(os.path.dirname(__file__), '.env')
+
+
+class Environment(Enum):
+    LOCAL = 0
+    PRODUCTION = 1
+
+    def is_local(self) -> bool:
+        return self.value == Environment.LOCAL.value
+
+    def is_prod(self) -> bool:
+        return self.value == Environment.PRODUCTION.value
 
 
 class Settings(BaseSettings):
-    # Желательно вместо str использовать SecretStr
-    # для конфиденциальных данных, например, токена бота
     bot_token: SecretStr
+    env: str
 
     # Начиная со второй версии pydantic, настройки класса настроек задаются
     # через model_config
@@ -24,6 +35,9 @@ class Settings(BaseSettings):
 # и провалидируется объект конфига,
 # который можно далее импортировать из разных мест
 config = Settings()
+environment_config = Environment.PRODUCTION
+if config.env == 'local':
+    environment_config = Environment.LOCAL
 
 RECEPIES = 'Рецепты'
 GIFTS = 'Подарки детям'
