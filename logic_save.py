@@ -15,7 +15,7 @@ from config import environment_config
 from oauth2client.service_account import ServiceAccountCredentials
 
 from fsm.states import ManualRecommend
-from keyboards.build_category_keyboard import build_category_keyboard, build_is_recommendation_keyboard
+from keyboards.build_category_keyboard import build_category_keyboard
 from utils.exceptions import EditorConflict
 from utils.tools import generate_uuid, extract_link, extract_phone
 

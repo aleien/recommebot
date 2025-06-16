@@ -90,3 +90,7 @@ category_keywords = {
 
 link_pattern = re.compile(r'https?://\S+')
 phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
+
+recommendation_prefixes = ['рекоменд', 'порекоменд', 'посовет', 'советую', 'помог', 'делюсь', 'понравил' ]
+recommendation_str = '|'.join(recommendation_prefixes)
+recommendation_regexp = f'(\s|\A)({recommendation_str}).*'

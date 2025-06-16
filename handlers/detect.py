@@ -10,7 +10,7 @@ from fsm.states import ManualRecommend
 from logic_save import check_recommendation
 from logic_save import manual_recommendation
 from storage import in_memory
-from utils.tools import extract_link
+from utils.tools import extract_link_plain
 
 router = Router()
 

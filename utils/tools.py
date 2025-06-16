@@ -2,6 +2,7 @@ import hashlib
 import re
 
 from aiogram.types import Message
+from config import recommendation_regexp
 
 phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
 
@@ -11,15 +12,31 @@ def generate_uuid(chat_id: int, msg_id: int) -> str:
     return hashlib.sha256(base.encode()).hexdigest()[:12]  # короткий хэш
 
 
-# TODO: multiple links
-def extract_link(message: Message) -> str:
-    if message.entities is not None:
-        link_match = list(filter(lambda x: x.type == 'url', message.entities))
+def is_recommendation(message: Message) -> bool:
+    link_match = extract_link(message)
+    phone_match = extract_phone(message)
+    text_lower = message.text.lower()
+    keywords_match = re.search(recommendation_regexp, text_lower)
+    if any([link_match, phone_match, keywords_match]):
+        return True
+    else:
+        return False
+
+
+def extract_link_plain(text: str, entities: []) -> str:
+    if entities is not None:
+        link_match = list(filter(lambda x: x.type == 'url', entities))
         if link_match:
-            return link_match[0].extract_from(message.text)
-        else: return ""
+            return link_match[0].get('text').extract_from(text)
+        else:
+            return ""
     else:
         return ""
+
+
+# TODO: add multiple links extraction
+def extract_link(message: Message) -> str:
+    return extract_link_plain(text=message.text, entities=message.entities)
 
 
 def extract_phone(message: Message) -> str:
@@ -33,3 +50,14 @@ def extract_phone(text: str) -> str:
         return str(phone_pattern.search(text).group(0))
     else:
         return ""
+
+# TODO: works incorrectly
+def is_recommendation(text: str, entities: []) -> bool:
+    text = text.lower()
+    link_match = extract_link_plain(text=text, entities=entities)
+    phone_match = extract_phone(text=text)
+    keywords_match = re.search(recommendation_regexp, text)
+    if any([link_match, phone_match, keywords_match]):
+        return True
+    else:
+        return False
