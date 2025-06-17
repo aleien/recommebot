@@ -1,28 +1,30 @@
 import asyncio
 import os
-import re
 
 import gspread
 from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
+from aiogram import html
+from aiogram.methods import CopyMessage
 from aiogram.types import (
     Message,
     InlineKeyboardButton,
-    InlineKeyboardMarkup
+    InlineKeyboardMarkup, LinkPreviewOptions
 )
-from config import environment_config
+
+import config
+from config import settings, environment_config, category_tags
 from oauth2client.service_account import ServiceAccountCredentials
 
 from fsm.states import ManualRecommend
 from keyboards.build_category_keyboard import build_category_keyboard
+from storage.file_db import ChatConfig
 from utils.exceptions import EditorConflict
-from utils.tools import generate_uuid, extract_link, extract_phone
+from utils.tools import generate_uuid, extract_link, extract_phone_from_text, extract_link_plain
 
 from storage import in_memory
 from utils.logger import log
-
-phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
 
 
 async def manual_recommendation(message: Message, bot: Bot, state: FSMContext):
@@ -30,8 +32,7 @@ async def manual_recommendation(message: Message, bot: Bot, state: FSMContext):
         # Пропускаем личные чаты
         return
 
-    message_text = message.text.lower()
-    await reply_category(bot, message, message_text, state)
+    await reply_category(bot, message, state)
 
 
 async def check_recommendation(message: Message, bot: Bot, state: FSMContext):
@@ -40,7 +41,7 @@ async def check_recommendation(message: Message, bot: Bot, state: FSMContext):
         return
 
     message_text = message.text.lower()
-    if extract_link(message) or bool(extract_phone(text=message_text)):
+    if extract_link(message) or bool(extract_phone_from_text(text=message_text)):
         await reply_confirmation(bot, message, message_text)
 
 
@@ -94,7 +95,8 @@ async def confirm_callback(uuid, user_id, bot, chat_id, answer_func, reply_func)
     await answer_func()
 
 
-async def reply_category(bot, message, message_text, state):
+async def reply_category(bot, message, state):
+    message_text = message.text if message.text else (message.caption if message.caption else message.message_id)
     log.info(f"Обнаружена рекомендация: {message_text}")
     uuid = generate_uuid(message.chat.id, message.message_id)
     in_memory.tmp_msg[uuid] = message
@@ -133,7 +135,7 @@ async def save(bot: Bot, category, uuid, from_user_id, answer_func, edit_func, s
         in_memory.active_editors[uuid] = from_user_id
 
         # Получаем сообщение, на которое была нажата кнопка
-        orig_msg = in_memory.tmp_msg.pop(uuid)
+        orig_msg: Message = in_memory.tmp_msg.pop(uuid)
 
         if not orig_msg:
             await answer_func("⚠️ Сообщение не найдено (возможно, устарело)", show_alert=True)
@@ -141,52 +143,99 @@ async def save(bot: Bot, category, uuid, from_user_id, answer_func, edit_func, s
             return
 
         name = orig_msg.from_user.username or orig_msg.from_user.first_name
+
         log.info(f"Сохранено сообщение от @{name}")
         log.info(f"Категория: {category}")
-        log.info(f"Текст: {orig_msg.text}")
 
-        await save_recommendation(category, name, orig_msg, uuid)
+        if orig_msg.photo or orig_msg.document:
+            log.info(f"Фото/файл")
+        else:
+            log.info(f"Текст: {orig_msg.text}")
 
-        await edit_func("✅ Рекомендация сохранена!", reply_markup=None)
+        category_tag = category_tags[category]
+        chat_config = config.chat_configs[orig_msg.chat.id]
+
+        if not chat_config:
+            await answer_func("⚠️ Сообщение не найдено (возможно, устарело)", show_alert=True)
+            in_memory.active_editors.pop(uuid, None)
+            return
+
+        copy: CopyMessage = await save_media_recommendation(category_tag, orig_msg, uuid, bot, chat_config)
+        message_link = f"https://t.me/c/{chat_config.channel}/{copy.message_id}"
+        html_link = html.link("сохранена", message_link)
+        sheet_link = html.link("Таблица", chat_config.sheets_link)
+        invite_link = html.link("Доступ в канал сохраненок", chat_config.channel_invite_link)
+        await edit_func(
+            f"✅ Рекомендация {html_link}! \n\n🗒{sheet_link} | 🔗{invite_link}",
+            reply_markup=None,
+            link_preview_options=LinkPreviewOptions(is_disabled=True)
+        )
+        await save_gsheet_recommendation(category, name, orig_msg, uuid, message_link, chat_config)
+
         in_memory.active_editors.pop(uuid, None)
         if state is not None:
             await state.clear()
 
-        await send_pm(bot, category, from_user_id, orig_msg)
     except Exception as error:
         log.exception(f"Ошибка при обработке callback: {error}", exc_info=True)
         await answer_func("❌ Ошибка при сохранении", show_alert=True)
 
 
-async def send_pm(bot, category, from_user_id, orig_msg):
-    # Пробуем отправить личное уведомление
-    try:
-        await bot.send_message(
-            chat_id=from_user_id,
-            text=f"✅ Добавили рекомендацию:\n\n💬 <i>{orig_msg.text}</i>\n📂 Категория: <b>{category}</b>"
+async def save_media_recommendation(category: str, message: Message, uuid, bot: Bot, chat_config: ChatConfig) -> CopyMessage:
+    log.info(f"Обнаружена рекомендация с медиа, uuid={uuid}")
+    edited_caption = f"{message.caption}\n\n#{category}" if message.caption else f"#{category}"
+    edited_text = f"{message.text}\n\n#{category}" if message.text else f"#{category}"
+
+    channel_id = f"-100{chat_config.channel}"
+    if len(edited_caption) >= 1024:
+        tag_caption = f"#{category}"
+        extra_text = message.caption
+        copy = await message.copy_to(
+            chat_id=channel_id,
+            caption=tag_caption,
+            disable_notification=True
         )
-    except Exception as e:
-        log.warn(f"Не удалось отправить сообщение в личку: {e}", exc_info=True)
-
-
-async def save_recommendation(category, name, orig_msg, uuid):
-    if environment_config.is_local():
-        worksheet = connect_to_gsheet(os.path.join(os.path.dirname(__file__), "credentials.json"),
-                                      str(abs(orig_msg.chat.id)))
+        await bot.send_message(channel_id, text=extra_text, disable_notification=True)
     else:
-        worksheet = connect_to_gsheet(os.path.join(os.path.dirname(__file__), "credentials.json"),
-                                      "Чат ПМЦ мамы 2024. Рекомендации")
+        copy = await message.copy_to(
+            chat_id=channel_id,
+            disable_notification=True
+        )
+
+    if message.caption:
+        await bot.edit_message_caption(caption=edited_caption, chat_id=channel_id)
+    if message.text:
+        await bot.edit_message_text(
+            text=edited_text,
+            message_id=copy.message_id,
+            chat_id=channel_id
+        )
+    return copy
+
+
+async def save_gsheet_recommendation(category, name, orig_msg, uuid, message_link, chat_config: ChatConfig):
+    worksheet = connect_to_gsheet(os.path.join(os.path.dirname(__file__), "credentials.json"), chat_config.sheets_name)
+
+    if orig_msg.text:
+        contact = extract_contact_plain(orig_msg.text, orig_msg.entities)
+        comment = orig_msg.text
+    elif orig_msg.caption:
+        contact = extract_contact_plain(orig_msg.caption, orig_msg.caption_entities)
+        comment = orig_msg.caption
+    else:
+        contact = ""
+        comment = ""
 
     save_to_gsheet(
         sheet=worksheet,
         uuid=uuid,
-        what=f'"{orig_msg.text}"',
+        what=f'"{comment}"',
         category=category,
         author=name,
         date=orig_msg.date.strftime("%d.%m.%Y"),
-        comment=f'"{orig_msg.text}"',
-        contact=extract_contact(orig_msg),
-        url=f"https://t.me/c/{orig_msg.chat.id}/{orig_msg.message_id}"
+        comment="",
+        contact=contact,
+        url=message_link,
     )
 
 
@@ -211,31 +260,20 @@ def extract_contact(message: Message) -> str:
     if link_match:
         return link_match
 
-    phone = extract_phone(text=message.text)
+    phone = extract_phone_from_text(text=message.text)
     if phone:
         return f"'{phone}"
     else:
         return ""
 
 
+def extract_contact_plain(text: str, entities: []) -> str:
+    link_match = extract_link_plain(text, entities)
+    if link_match:
+        return link_match
 
-        # text = orig_msg.text.lower()
-        # link = extract_link(orig_msg)
-        # phone = extract_phone(text=text)
-        # has_contact = link or phone
-        #
-        # if not has_contact:
-        #     in_memory.pending_links[from_user_id] = uuid  # сохраняем ожидание
-        #
-        #     keyboard = InlineKeyboardMarkup(
-        #         inline_keyboard=[
-        #             [InlineKeyboardButton(text="➕ Добавить ссылку", callback_data=f"addlink|{uuid}")],
-        #             [InlineKeyboardButton(text="❌ Отмена", callback_data=f"cancel|{uuid}")]
-        #         ]
-        #     )
-        #     await edit_func(
-        #         "🔗 В сообщении нет ссылки или телефона.\nВы можете добавить контакт:",
-        #         reply_markup=keyboard
-        #     )
-        #
-        #     return
+    phone = extract_phone_from_text(text=text)
+    if phone:
+        return f"'{phone}"
+    else:
+        return ""

@@ -1,0 +1,7 @@
+credentials.json
+recommendations.csv
+requirements.txt
+result.json
+.venv/
+logs/
+__pycache__

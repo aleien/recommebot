@@ -1,10 +1,12 @@
 import os
-import re
 
 from enum import Enum
+from typing import Dict
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import SecretStr
 
+from storage.file_db import load_configs, ChatConfig
 
 DOTENV = os.path.join(os.path.dirname(__file__), '.env')
 
@@ -23,6 +25,7 @@ class Environment(Enum):
 class Settings(BaseSettings):
     bot_token: SecretStr
     env: str
+    channel: int
 
     # Начиная со второй версии pydantic, настройки класса настроек задаются
     # через model_config
@@ -34,10 +37,12 @@ class Settings(BaseSettings):
 # При импорте файла сразу создастся
 # и провалидируется объект конфига,
 # который можно далее импортировать из разных мест
-config = Settings()
+settings = Settings()
 environment_config = Environment.PRODUCTION
-if config.env == 'local':
+if settings.env == 'local':
     environment_config = Environment.LOCAL
+
+chat_configs: Dict[int, ChatConfig] = load_configs()
 
 RECEPIES = 'Рецепты'
 GIFTS = 'Подарки детям'
@@ -88,9 +93,25 @@ category_keywords = {
     FOOD: ['банка', 'состав', 'перекус'],
 }
 
-link_pattern = re.compile(r'https?://\S+')
-phone_pattern = re.compile(r'(\+7|8)\s?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}')
+category_tags = {
+    RECEPIES: 'рецепты',
+    GIFTS: 'подарки',
+    HOTEL: 'отели',
+    CARE: 'уход',
+    STUDY: 'обучение',
+    SERVICES: 'услуги',
+    NANNY: 'няни',
+    ADVICE: 'советы',
+    OTHER: 'другое',
+    FURNITURE: 'мебель',
+    DEVICES: 'девайсы',
+    MEDS: 'лекарства',
+    CLOTHES: 'одежда',
+    TOYS: 'игрушки',
+    FOOD: 'питание',
+    DOC: 'врачи',
+}
 
 recommendation_prefixes = ['рекоменд', 'порекоменд', 'посовет', 'советую', 'помог', 'делюсь', 'понравил' ]
 recommendation_str = '|'.join(recommendation_prefixes)
-recommendation_regexp = f'(\s|\A)({recommendation_str}).*'
+recommendation_regexp = f'(\\s|\\A)({recommendation_str}).*'

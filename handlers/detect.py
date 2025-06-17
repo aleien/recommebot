@@ -1,23 +1,14 @@
-import re
-
 from aiogram import Bot, Router, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from fsm.states import ManualRecommend
 from logic_save import check_recommendation
-from logic_save import manual_recommendation
 from storage import in_memory
-from utils.tools import extract_link_plain
+from utils.logger import log
 
 router = Router()
-
-
-@router.message(StateFilter(None), Command("save"))
-async def handle_save_manual(message: Message, bot: Bot, state: FSMContext):
-    await manual_recommendation(message.reply_to_message, bot, state)
 
 
 @router.callback_query(F.data.startswith("cancel|"))
@@ -41,3 +32,12 @@ async def handle_cancel(callback: CallbackQuery, bot: Bot, state: FSMContext):
 async def detect_recommendation(message: Message, bot: Bot, state: FSMContext):
     if not message.from_user.is_bot:
         await check_recommendation(message, bot, state)
+
+
+@router.message(F.text)
+async def detect_any(message: Message, bot: Bot, state: FSMContext):
+    log.info("Не попало в другие хэндлеры: ")
+    log.info(f"Стейт {state}")
+    log.info(f"Текст: {message.text}")
+    log.info(f"Описание: {message.caption}")
+    log.info(f"id: {message.message_id}")

@@ -6,25 +6,26 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from config import config
+from config import settings
 from handlers import add_link
 from handlers import detect
 from handlers import save
-from handlers import start
+from handlers import commands
 from utils.logger import log
 
 # recomme-bot-bucket
 bot = Bot(
-    token=config.bot_token.get_secret_value(),
+    token=settings.bot_token.get_secret_value(),
     default=DefaultBotProperties(parse_mode=ParseMode.HTML),
 )
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 
 
+
 async def main():
     log.info("======== Бот запускается... ========")
-    dp.include_router(start.router)
+    dp.include_router(commands.router)
     dp.include_router(detect.router)
     dp.include_router(add_link.router)
     dp.include_router(save.router)
