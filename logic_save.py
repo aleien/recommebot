@@ -153,6 +153,7 @@ async def save(bot: Bot, category, uuid, from_user_id, answer_func, edit_func, s
             log.info(f"Текст: {orig_msg.text}")
 
         category_tag = category_tags[category]
+        log.info(f"Получаем конфиг чата: {orig_msg.chat.id}")
         chat_config = config.chat_configs[orig_msg.chat.id]
 
         if not chat_config:
