@@ -30,14 +30,21 @@ async def handle_cancel(callback: CallbackQuery, bot: Bot, state: FSMContext):
 
 @router.message(StateFilter(None), F.text)
 async def detect_recommendation(message: Message, bot: Bot, state: FSMContext):
+    log.info(f"[detect_recommendation] Обработка сообщения от @{message.from_user.username}")
     if not message.from_user.is_bot:
         await check_recommendation(message, bot, state)
 
 
 @router.message(F.text)
 async def detect_any(message: Message, bot: Bot, state: FSMContext):
-    log.info("Не попало в другие хэндлеры: ")
-    log.info(f"Стейт {state}")
-    log.info(f"Текст: {message.text}")
-    log.info(f"Описание: {message.caption}")
-    log.info(f"id: {message.message_id}")
+    current_state = await state.get_state()
+    log.info(f"[detect_any] Сообщение не обработано другими хэндлерами")
+    log.info(f"[detect_any] Текущее состояние: {current_state}")
+    log.info(f"[detect_any] От: @{message.from_user.username}")
+    log.info(f"[detect_any] Текст: {message.text}")
+    log.info(f"[detect_any] Caption: {message.caption}")
+    log.info(f"[detect_any] Message ID: {message.message_id}")
+    
+    # Если состояние None, но сообщение попало сюда - возможно проблема с фильтрами
+    if current_state is None and not message.from_user.is_bot:
+        log.warning(f"[detect_any] ВНИМАНИЕ: Сообщение со state=None попало в detect_any вместо detect_recommendation!")

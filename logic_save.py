@@ -38,11 +38,42 @@ async def manual_recommendation(message: Message, bot: Bot, state: FSMContext):
 async def check_recommendation(message: Message, bot: Bot, state: FSMContext):
     if message.chat.type == "private":
         # Пропускаем личные чаты
+        log.info(f"Пропускаем личный чат: {message.chat.id}")
         return
 
+    # Добавляем детальное логирование
+    log.info(f"=== Проверка рекомендации ===")
+    log.info(f"Chat ID: {message.chat.id}, Message ID: {message.message_id}")
+    log.info(f"From: @{message.from_user.username or message.from_user.first_name}")
+    log.info(f"Text: {message.text}")
+    
+    
     message_text = message.text.lower()
-    if extract_link(message) or bool(extract_phone_from_text(text=message_text)):
+    
+    # Проверяем ссылки
+    link = extract_link(message)
+    log.info(f"Найдена ссылка: {link if link else 'НЕТ'}")
+    
+    # Проверяем телефоны
+    phone = extract_phone_from_text(text=message_text)
+    log.info(f"Найден телефон: {phone if phone else 'НЕТ'}")
+    
+    # Проверяем ключевые слова (добавляем эту проверку!)
+    import re
+    from config import recommendation_regexp
+    keywords_match = re.search(recommendation_regexp, message_text)
+    log.info(f"Найдены ключевые слова: {'ДА' if keywords_match else 'НЕТ'}")
+    
+    # Проверяем текущее состояние FSM
+    current_state = await state.get_state()
+    log.info(f"Текущее состояние FSM: {current_state}")
+    
+    # Если найдена ссылка, телефон или ключевые слова
+    if link or phone:
+        log.info("✅ Обнаружена рекомендация, отправляем подтверждение")
         await reply_confirmation(bot, message, message_text)
+    else:
+        log.info("❌ Рекомендация не обнаружена")
 
 
 async def reply_confirmation(bot, message, message_text):
@@ -204,7 +235,7 @@ async def save_media_recommendation(category: str, message: Message, uuid, bot: 
         )
 
     if message.caption:
-        await bot.edit_message_caption(caption=edited_caption, chat_id=channel_id)
+        await bot.edit_message_caption(message_id=copy.message_id, caption=edited_caption, chat_id=channel_id)
     if message.text:
         await bot.edit_message_text(
             text=edited_text,

@@ -32,8 +32,8 @@ async def handle_manual_category(callback: CallbackQuery, bot: Bot, state: FSMCo
 @router.callback_query(StateFilter(None), F.data.startswith("save|"))
 async def handle_save_callback(callback: CallbackQuery, bot: Bot, state: FSMContext):
     _, category, uuid = callback.data.split("|")
-    state = await state.get_state()
-    log.info(f"Текущий стейт в хендлере: {state}")
+    current_state = await state.get_state()
+    log.info(f"Текущий стейт в хендлере: {current_state}")
     await save(
         bot=bot,
         category=category,
@@ -41,7 +41,7 @@ async def handle_save_callback(callback: CallbackQuery, bot: Bot, state: FSMCont
         from_user_id=callback.from_user.id,
         answer_func=callback.answer,
         edit_func=callback.message.edit_text,
-        state=state)
+        state=state)  # Передаем FSMContext, а не строку!
 
 
 @router.callback_query(F.data.startswith("confirm|"))
